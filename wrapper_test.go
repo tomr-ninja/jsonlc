@@ -41,18 +41,35 @@ func TestLowCardinality_UnmarshalJSON(t *testing.T) {
 }
 
 func BenchmarkUnmarshalJSON(b *testing.B) {
-	longString := strings.Repeat("abc", 300)
-	data := []byte(`{"field_one": 1, "field_two": "` + longString + `"}`)
+	shortString := "golang"
+	longString := strings.Repeat("golang", 300)
+	extremelyLongString := strings.Repeat(longString, 100)
 
-	b.Run("standard", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
-			_ = json.Unmarshal(data, &MyStruct{})
-		}
+	dataWithShortString := []byte(`{"field_one": 1, "field_two": "` + shortString + `"}`)
+	dataWithLongString := []byte(`{"field_one": 1, "field_two": "` + longString + `"}`)
+	dataWithExtremelyLongString := []byte(`{"field_one": 1, "field_two": "` + extremelyLongString + `"}`)
+
+	benchmarkStructs := func(b *testing.B, data []byte) {
+		b.Run("standard", func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				_ = json.Unmarshal(data, &MyStruct{})
+			}
+		})
+
+		b.Run("optimized", func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				_ = json.Unmarshal(data, &MyStructOptimized{})
+			}
+		})
+	}
+
+	b.Run("short_string", func(b *testing.B) {
+		benchmarkStructs(b, dataWithShortString)
 	})
-
-	b.Run("optimized", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
-			_ = json.Unmarshal(data, &MyStructOptimized{})
-		}
+	b.Run("long_string", func(b *testing.B) {
+		benchmarkStructs(b, dataWithLongString)
+	})
+	b.Run("extremely_long_string", func(b *testing.B) {
+		benchmarkStructs(b, dataWithExtremelyLongString)
 	})
 }
