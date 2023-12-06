@@ -41,35 +41,76 @@ func TestLowCardinality_UnmarshalJSON(t *testing.T) {
 }
 
 func BenchmarkUnmarshalJSON(b *testing.B) {
-	shortString := "golang"
-	longString := strings.Repeat("golang", 300)
-	extremelyLongString := strings.Repeat(longString, 100)
+	b.Run("string", func(b *testing.B) {
+		shortString := "golang"
+		longString := strings.Repeat("golang", 300)
+		extremelyLongString := strings.Repeat(longString, 100)
 
-	dataWithShortString := []byte(`{"field_one": 1, "field_two": "` + shortString + `"}`)
-	dataWithLongString := []byte(`{"field_one": 1, "field_two": "` + longString + `"}`)
-	dataWithExtremelyLongString := []byte(`{"field_one": 1, "field_two": "` + extremelyLongString + `"}`)
+		dataWithShortString := []byte(`{"field_one": 1, "field_two": "` + shortString + `"}`)
+		dataWithLongString := []byte(`{"field_one": 1, "field_two": "` + longString + `"}`)
+		dataWithExtremelyLongString := []byte(`{"field_one": 1, "field_two": "` + extremelyLongString + `"}`)
 
-	benchmarkStructs := func(b *testing.B, data []byte) {
+		benchmarkStructs := func(b *testing.B, data []byte) {
+			b.Run("standard", func(b *testing.B) {
+				b.ReportAllocs()
+				for i := 0; i < b.N; i++ {
+					_ = json.Unmarshal(data, &MyStruct{})
+				}
+			})
+
+			b.Run("optimized", func(b *testing.B) {
+				b.ReportAllocs()
+				for i := 0; i < b.N; i++ {
+					_ = json.Unmarshal(data, &MyStructOptimized{})
+				}
+			})
+		}
+
+		b.Run("short", func(b *testing.B) {
+			benchmarkStructs(b, dataWithShortString)
+		})
+		b.Run("long", func(b *testing.B) {
+			benchmarkStructs(b, dataWithLongString)
+		})
+		b.Run("extremely_long", func(b *testing.B) {
+			benchmarkStructs(b, dataWithExtremelyLongString)
+		})
+	})
+
+	b.Run("struct", func(b *testing.B) {
+		type (
+			// all 4 are ints, so relatively small types
+			// but there are 4 of them, so optimization should be noticeable
+			innerStruct struct {
+				FieldOne   int `json:"field_one"`
+				FieldTwo   int `json:"field_two"`
+				FieldThree int `json:"field_three"`
+				FieldFour  int `json:"field_four"`
+			}
+			nonOptStruct struct {
+				FieldOne int         `json:"field_one"`
+				FieldTwo innerStruct `json:"field_two"`
+			}
+			optStruct struct {
+				FieldOne int                         `json:"field_one"`
+				FieldTwo LowCardinality[innerStruct] `json:"field_two"`
+			}
+		)
+
+		data := []byte(`{"field_one": 1, "field_two": {"field_one": 1, "field_two": 2, "field_three": 3, "field_four": 4}}`)
+
 		b.Run("standard", func(b *testing.B) {
+			b.ReportAllocs()
 			for i := 0; i < b.N; i++ {
-				_ = json.Unmarshal(data, &MyStruct{})
+				_ = json.Unmarshal(data, &nonOptStruct{})
 			}
 		})
 
 		b.Run("optimized", func(b *testing.B) {
+			b.ReportAllocs()
 			for i := 0; i < b.N; i++ {
-				_ = json.Unmarshal(data, &MyStructOptimized{})
+				_ = json.Unmarshal(data, &optStruct{})
 			}
 		})
-	}
-
-	b.Run("short_string", func(b *testing.B) {
-		benchmarkStructs(b, dataWithShortString)
-	})
-	b.Run("long_string", func(b *testing.B) {
-		benchmarkStructs(b, dataWithLongString)
-	})
-	b.Run("extremely_long_string", func(b *testing.B) {
-		benchmarkStructs(b, dataWithExtremelyLongString)
 	})
 }
