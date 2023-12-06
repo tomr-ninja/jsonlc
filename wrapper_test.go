@@ -16,28 +16,68 @@ type MyStructOptimized struct {
 	FieldTwo LowCardinality[string] `json:"field_two"`
 }
 
+func TestLowCardinality_MarshalJSON(t *testing.T) {
+	v := &MyStructOptimized{
+		FieldOne: 1,
+		FieldTwo: FromValue("golang"),
+	}
+
+	data, err := json.Marshal(v)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	expected := `{"field_one":1,"field_two":"golang"}`
+	if string(data) != expected {
+		t.Errorf("unexpected value: %v", string(data))
+	}
+}
+
 func TestLowCardinality_UnmarshalJSON(t *testing.T) {
-	data := []byte(`{"field_one": 1, "field_two": "golang"}`)
-	v := &MyStructOptimized{}
+	t.Run("string", func(t *testing.T) {
+		data := []byte(`{"field_one": 1, "field_two": "golang"}`)
+		v := &MyStructOptimized{}
 
-	if err := json.Unmarshal(data, v); err != nil {
-		t.Errorf("unexpected error: %v", err)
-	}
-	if v.FieldOne != 1 {
-		t.Errorf("unexpected value: %v", v.FieldOne)
-	}
-	if v.FieldTwo.Value() != "golang" {
-		t.Errorf("unexpected value: %v", v.FieldTwo)
-	}
+		if err := json.Unmarshal(data, v); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+		if v.FieldOne != 1 {
+			t.Errorf("unexpected value: %v", v.FieldOne)
+		}
+		if v.FieldTwo.Value() != "golang" {
+			t.Errorf("unexpected value: %v", v.FieldTwo)
+		}
 
-	// test that the value is not unmarshaled again\
-	v2 := &MyStructOptimized{}
-	if err := json.Unmarshal(data, v2); err != nil {
-		t.Errorf("unexpected error: %v", err)
-	}
-	if v2.FieldTwo.value != v.FieldTwo.value {
-		t.Errorf("pointers should be equal")
-	}
+		// test that the value is not unmarshaled again\
+		v2 := &MyStructOptimized{}
+		if err := json.Unmarshal(data, v2); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+		if v2.FieldTwo.value != v.FieldTwo.value {
+			t.Errorf("pointers should be equal")
+		}
+	})
+
+	t.Run("struct_ref", func(t *testing.T) {
+		type innerStruct struct {
+			FieldOne int `json:"field_one"`
+		}
+		type testStruct struct {
+			FieldOne int                          `json:"field_one"`
+			FieldTwo LowCardinality[*innerStruct] `json:"field_two"`
+		}
+
+		data := []byte(`{"field_one": 1, "field_two": {"field_one": 1}}`)
+		v := &testStruct{}
+		if err := json.Unmarshal(data, v); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+		if v.FieldOne != 1 {
+			t.Errorf("unexpected value: %v", v.FieldOne)
+		}
+		if v.FieldTwo.Value().FieldOne != 1 {
+			t.Errorf("unexpected value: %v", v.FieldTwo)
+		}
+	})
 }
 
 func BenchmarkUnmarshalJSON(b *testing.B) {

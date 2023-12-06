@@ -13,6 +13,16 @@ var (
 	hashSeed    = maphash.MakeSeed()
 )
 
+func FromValue[T any](v T) LowCardinality[T] {
+	data, _ := json.Marshal(v)
+	h := hash(data)
+	valueByHash[h] = unsafe.Pointer(&v)
+
+	return LowCardinality[T]{
+		value: &v,
+	}
+}
+
 type LowCardinality[T any] struct {
 	value *T
 }
