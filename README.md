@@ -8,6 +8,10 @@ for small types like `int` or `bool`.
 Move rarely changing fields to a separate struct to maximize the effect, e.g. server name/host, app version,
 environment variables, etc. - everything that doesn't produce a lot of entropy when logged together.
 
+This technique is similar to [string interning](https://en.wikipedia.org/wiki/String_interning), but for any type.
+Mostly inspired by [LowCardinality](https://clickhouse.com/docs/en/sql-reference/data-types/lowcardinality) column
+type in ClickHouse.
+
 ## Usage
 
 ```go
@@ -38,14 +42,14 @@ BenchmarkUnmarshalJSON
 
 string
 string/short
-string/short/standard             1000000	      1222 ns/op	     248 B/op	       6 allocs/op
-string/short/optimized            1239019	      1021 ns/op	     232 B/op	       5 allocs/op
-string/long/standard               134064	     10976 ns/op	    2288 B/op	       6 allocs/op
-string/long/optimized              198180	      7162 ns/op	     232 B/op	       5 allocs/op
-string/extremely_long/standard       1092	   1150572 ns/op	  180464 B/op	       6 allocs/op
-string/extremely_long/optimized      2257	    553487 ns/op	     232 B/op	       5 allocs/op
-struct/standard                    723272	      1699 ns/op	     312 B/op	       7 allocs/op
-struct/optimized                   887960	      1405 ns/op	     248 B/op	       6 allocs/op
+string/short/standard             1000000       1222 ns/op       248 B/op    6 allocs/op
+string/short/optimized            1239019       1021 ns/op       232 B/op    5 allocs/op
+string/long/standard               134064      10976 ns/op      2288 B/op    6 allocs/op
+string/long/optimized              198180       7162 ns/op       232 B/op    5 allocs/op
+string/extremely_long/standard       1092    1150572 ns/op    180464 B/op    6 allocs/op
+string/extremely_long/optimized      2257     553487 ns/op       232 B/op    5 allocs/op
+struct/standard                    723272       1699 ns/op       312 B/op    7 allocs/op
+struct/optimized                   887960       1405 ns/op       248 B/op    6 allocs/op
 ```
 
 You can see that there is always 1 less allocation. "struct" bench uses relatively small struct with 4 integers,
