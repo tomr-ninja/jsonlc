@@ -38,10 +38,6 @@ func myFunc() error {
 Some benchmarks (edited for readability):
 
 ```    
-BenchmarkUnmarshalJSON
-
-string
-string/short
 string/short/standard             1000000       1222 ns/op       248 B/op    6 allocs/op
 string/short/optimized            1239019       1021 ns/op       232 B/op    5 allocs/op
 string/long/standard               134064      10976 ns/op      2288 B/op    6 allocs/op
