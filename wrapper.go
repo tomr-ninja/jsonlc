@@ -27,6 +27,10 @@ type LowCardinality[T any] struct {
 	value *T
 }
 
+func (v *LowCardinality[T]) Pointer() *T {
+	return v.value
+}
+
 func (v *LowCardinality[T]) Value() T {
 	return *v.value
 }
